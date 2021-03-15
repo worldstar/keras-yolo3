@@ -179,3 +179,59 @@ def get_random_data2(annotation_line, input_shape, random=True, max_boxes=20, ji
         box_data[:len(box)] = box
 
     return image_data, box_data
+
+def get_random_data2(annotation_line, input_shape, max_boxes=20, jitter=.3, hue=.1, sat=1.5, val=1.5, proc_img=True):
+    
+    line = annotation_line.split()
+    img = cv2.imread(line[0])
+    h_img, w_img, _ = img.shape
+    w, h = input_shape
+
+    box = np.array([np.array(list(map(int,box.split(',')))) for box in line[1:]])
+    # print('before',box)
+    max_bbox = np.concatenate([np.min(box[:, 0:2], axis=0), np.max(box[:, 2:4], axis=0)], axis=-1)
+
+    max_l_trans = max_bbox[0]
+    max_u_trans = max_bbox[1]
+    max_r_trans = w_img - max_bbox[2]
+    max_d_trans = h_img - max_bbox[3]
+
+    crop_xmin = max(0, int(max_bbox[0] - random.uniform(0, max_l_trans)))
+    crop_ymin = max(0, int(max_bbox[1] - random.uniform(0, max_u_trans)))
+    crop_xmax = max(w_img, int(max_bbox[2] + random.uniform(0, max_r_trans)))
+    crop_ymax = max(h_img, int(max_bbox[3] + random.uniform(0, max_d_trans)))
+
+    img = img[crop_ymin : crop_ymax, crop_xmin : crop_xmax]
+    image = Image.fromarray(cv2.cvtColor(img,cv2.COLOR_BGR2RGB))
+    new_image = Image.new('RGB', (w,h), (128,128,128))
+    new_image.paste(image, (0, 0))
+    img2 = cv2.cvtColor(np.asarray(new_image),cv2.COLOR_RGB2BGR)
+
+    
+
+    box_data = np.zeros((max_boxes,5))
+    if len(box)>0:
+        np.random.shuffle(box)
+        if len(box)>max_boxes: box = box[:max_boxes]
+
+        box[:, [0, 2]] = box[:, [0, 2]] - crop_xmin
+        box[:, [1, 3]] = box[:, [1, 3]] - crop_ymin
+        box[:, 2][box[:, 2]>w] = w
+        box[:, 3][box[:, 3]>h] = h
+        box_w = box[:, 2] - box[:, 0]
+        box_h = box[:, 3] - box[:, 1]
+        box = box[np.logical_and(box_w>1, box_h>1)] # discard invalid box
+        if len(box)>max_boxes: box = box[:max_boxes]
+
+        # light_blue = (255,200,100)
+        # for boxs in box:
+        #     cv2.rectangle(img2,(boxs[0],boxs[1]),(boxs[2],boxs[3]),light_blue,2)
+
+        box_data[:len(box)] = box
+
+    # writename=os.path.basename(line[0])
+    # cv2.imshow('My Image', img2)
+    # cv2.waitKey(0)
+
+    
+    return img2, box_data
