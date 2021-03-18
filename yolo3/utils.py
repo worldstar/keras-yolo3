@@ -188,28 +188,30 @@ def get_random_data2(annotation_line, input_shape, max_boxes=20, jitter=.3, hue=
     w, h = input_shape
 
     box = np.array([np.array(list(map(int,box.split(',')))) for box in line[1:]])
-    # print('before',box)
-    max_bbox = np.concatenate([np.min(box[:, 0:2], axis=0), np.max(box[:, 2:4], axis=0)], axis=-1)
+    max_bbox = np.concatenate([np.min(box[:, 0:2], axis=0), np.max(box[:, 2:4], axis=0)], axis=-1)# 取得所有bbox中的最大bbox
 
+ 
+    #包含所有目標框的最大框到各個邊的距離   
     max_l_trans = max_bbox[0]
     max_u_trans = max_bbox[1]
     max_r_trans = w_img - max_bbox[2]
     max_d_trans = h_img - max_bbox[3]
 
-    crop_xmin = max(0, int(max_bbox[0] - random.uniform(0, max_l_trans)))
-    crop_ymin = max(0, int(max_bbox[1] - random.uniform(0, max_u_trans)))
-    crop_xmax = max(w_img, int(max_bbox[2] + random.uniform(0, max_r_trans)))
-    crop_ymax = max(h_img, int(max_bbox[3] + random.uniform(0, max_d_trans)))
+    #隨機擴展框最大範圍
+    crop_xmin = max(0, int(max_bbox[0] - random.uniform(0, max_l_trans)*2))
+    crop_ymin = max(0, int(max_bbox[1] - random.uniform(0, max_u_trans)*2))
+    crop_xmax = max(w_img, int(max_bbox[2] + random.uniform(0, max_r_trans)*2))
+    crop_ymax = max(h_img, int(max_bbox[3] + random.uniform(0, max_d_trans)*2))
 
-    img = img[crop_ymin : crop_ymax, crop_xmin : crop_xmax]
-    image = Image.fromarray(cv2.cvtColor(img,cv2.COLOR_BGR2RGB))
-    new_image = Image.new('RGB', (w,h), (128,128,128))
-    new_image.paste(image, (0, 0))
-    img2 = cv2.cvtColor(np.asarray(new_image),cv2.COLOR_RGB2BGR)
+    img = img[crop_ymin : crop_ymax, crop_xmin : crop_xmax] #進行裁剪
+    image = Image.fromarray(cv2.cvtColor(img,cv2.COLOR_BGR2RGB)) #因為目前圖片格式是cv2,因此要轉換為PIL格式做貼上的語法
+    new_image = Image.new('RGB', (w,h), (128,128,128)) #產出一個(416,416)的灰色圖片
+    new_image.paste(image, (0, 0)) #將轉為PIL格式的圖片 貼到灰色圖片中
+    img2 = cv2.cvtColor(np.asarray(new_image),cv2.COLOR_RGB2BGR) #再將格式轉回cv2
 
-    
+    box_data = np.zeros((max_boxes,5)) #box最多有max_boxes個，即shap->(20,5)
 
-    box_data = np.zeros((max_boxes,5))
+    #將剪裁後位移的框與原始框進行相減，避免變換之後的值過大或過小，並去除異常的box 
     if len(box)>0:
         np.random.shuffle(box)
         if len(box)>max_boxes: box = box[:max_boxes]
@@ -222,14 +224,15 @@ def get_random_data2(annotation_line, input_shape, max_boxes=20, jitter=.3, hue=
         box_h = box[:, 3] - box[:, 1]
         box = box[np.logical_and(box_w>1, box_h>1)] # discard invalid box
         if len(box)>max_boxes: box = box[:max_boxes]
+        box_data[:len(box)] = box
 
+        #標框線
         # light_blue = (255,200,100)
         # for boxs in box:
         #     cv2.rectangle(img2,(boxs[0],boxs[1]),(boxs[2],boxs[3]),light_blue,2)
 
-        box_data[:len(box)] = box
+    # writename=os.path.basename(line[0]) #取檔名
 
-    # writename=os.path.basename(line[0])
     # cv2.imshow('My Image', img2)
     # cv2.waitKey(0)
 
