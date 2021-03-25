@@ -15,12 +15,12 @@ from keras import backend as K
 from keras.models import load_model
 from keras.layers import Input
 from PIL import Image, ImageFont, ImageDraw
-from yolo3.model_yolov4 import yolo_bodyV4,yolov4_loss,preprocess_true_boxes
+# from yolo3.model_yolov4 import yolo_bodyV4,yolov4_loss,preprocess_true_boxes
 from yolo3.model import yolo_eval, yolo_body
 from yolo3.utils import letterbox_image
 from keras.utils import multi_gpu_model
-from yolo3.model_densenet import densenet_body,yoloV4densenet_body
-from yolo3.model_se_densenet import se_densenet_body
+# from yolo3.model_densenet import densenet_body,yoloV4densenet_body
+# from yolo3.model_se_densenet import se_densenet_body
 from pathlib import Path
 from xml.etree import ElementTree as ET
 import cv2 
@@ -35,14 +35,14 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 readpath        = sys.argv[1]#"Data/VSDType2-20210223T090005Z-001/VSDType2/*/*.png"       圖檔來源
 log_dir         = sys.argv[2]#'logs/20200421_Y&D_Adam&1e-4_focalloss&gamma=2.^alpha=.25/' 模型路徑
 write_dir       = sys.argv[3]#'logs/20200421_Y&D_Adam&1e-4_focalloss&gamma=2.^alpha=.25/' 寫入路徑
-modeltype       = sys.argv[4]#                                                            模型類型
-xmltxttype      = sys.argv[5]#'logs/20200421_Y&D_Adam&1e-4_focalloss&gamma=2.^alpha=.25/' 
+modeltype       = sys.argv[4]# model                                                      模型類型
+filetype      = sys.argv[5]#'logs/20200421_Y&D_Adam&1e-4_focalloss&gamma=2.^alpha=.25/' 
 
 
 def _main():
-    if xmltxttype == "txt":
+    if filetype == "txt":
         detect_img(YOLO())
-    if xmltxttype == "xml":
+    if filetype == "xml":
         detect_imgtoxml(YOLO())
 def detect_img(yolo):
     #outdir = "Data/SegmentationClass"
@@ -72,7 +72,7 @@ def detect_img(yolo):
     # with open(FPSPath + "FPS.txt", 'w') as temp_file:
     #     temp_file.write("It cost %f /S" % (147/ttotal))
 
-    yolo.close_session()
+    # yolo.close_session()
 def detect_imgtoxml(yolo):
     SPath  = write_dir
     Path(SPath).mkdir(parents=True, exist_ok=True)
@@ -88,15 +88,16 @@ def detect_imgtoxml(yolo):
             for predicteditem in predictedarray:
                 tree = ET.ElementTree(root)
                 Path(SPath+"/"+predicteditem+"/").mkdir(parents=True, exist_ok=True)
-                tree.write('.\{}\{}.xml'.format(SPath+predicteditem+"/", imagename.strip('.png')))
-                img.save('.\{}\{}'.format(SPath+predicteditem+"/", imagename))
-                xml_csv   = xml2csv('.\{}\{}.xml'.format(SPath+predicteditem+"/", imagename.strip('.png')))
+                print('./{}/{}.xml'.format(SPath+predicteditem+"/", imagename.strip('.jpg')))
+                tree.write('./{}/{}.xml'.format(SPath+predicteditem+"/", imagename.strip('.jpg')))
+                img.save('./{}/{}'.format(SPath+predicteditem+"/", imagename))
+                xml_csv   = xml2csv('./{}/{}.xml'.format(SPath+predicteditem+"/", imagename.strip('.jpg')))
                 csv_json=df2labelme(xml_csv,jpgfile,image)
-                with open('.\{}\{}.json'.format(SPath+predicteditem+"/", imagename.strip('.png')), 'w') as outfile:
+                with open('./{}/{}.json'.format(SPath+predicteditem+"/", imagename.strip('.jpg')), 'w') as outfile:
                     json.dump(csv_json, outfile)
         else:
             Path(SPath+"Normal/").mkdir(parents=True, exist_ok=True)
-            img.save('.\{}\{}'.format(SPath+"Normal/", imagename))
+            img.save('./{}/{}'.format(SPath+"Normal/", imagename))
         # yolo.detect_imagexml(img)
 
     # yolo.close_session()
@@ -223,10 +224,12 @@ def create_tree(image_name, h, w):
 
 def xml2csv(xml_path):
     """Convert XML to CSV
+
     Args:
         xml_path (str): Location of annotated XML file
     Returns:
         pd.DataFrame: converted csv file
+
     """
     # print("xml to csv {}".format(xml_path))
     xml_list = []
@@ -254,12 +257,15 @@ def xml2csv(xml_path):
 
 def df2labelme(symbolDict,image_path,image):
     """ convert annotation in CSV format to labelme JSON
+
     Args:
         symbolDict (dataframe): annotations in dataframe
         image_path (str): path to image
         image (np.ndarray): image read as numpy array
+
     Returns:
         JSON: converted labelme JSON
+
     """
     try:
         symbolDict['min']= symbolDict[['xmin','ymin']].values.tolist()
